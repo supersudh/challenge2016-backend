@@ -14,31 +14,41 @@ app.use(bodyParser.json({ type: '*/*' }));
 var fs = require('fs');
 
 var userDetails = [];
+var ready = false;
 // router(app);
 
 // Server Setup
+const port = process.env.PORT || 8080;
+const server = http.createServer(app);
+server.listen(port);
+console.log('Server listening on:', port);
+
+
 if (fs.existsSync(__dirname + '/database.json')) {
   jsonfile.readFile(__dirname + '/database.json', function (err, data) {
     dataBase = data;
-    const port = process.env.PORT || 8080;
-    const server = http.createServer(app);
-    server.listen(port);
-    console.log('Server listening on:', port);
+    ready = true;
   })
 }
 else {
   require('./csvOp')().then(data => {
     dataBase = data;
-    const port = process.env.PORT || 8080;
-    const server = http.createServer(app);
-    server.listen(port);
-    console.log('Server listening on:', port);
+    ready = true;
   }, err => {
     console.log("Err index", err);
   });
 }
 
 var GLOBAL_USER_POOL = [];
+
+app.get('**',(req,res,next) => {
+  if(!ready) {
+    res.send({Error: "Come Back when I am ready... Wait for 1-2 minutes bro."}).status(500);
+  }
+  else {
+    next();
+  }
+});
 
 app.get('/countries', (req, res) => {
   res.send(dataBase.countries);
