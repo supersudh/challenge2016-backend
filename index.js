@@ -160,3 +160,9 @@ app.post('check_permissions', (req, res) => {
   }
 });
 
+app.post('reset_key',(req,res) => {
+  let { key } = req.body;
+  delete GLOBAL_USER_POOL[key];
+  return res.send({data: true}).status(200);
+});
+
