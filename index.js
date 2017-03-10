@@ -41,6 +41,11 @@ else {
 
 var GLOBAL_USER_POOL = [];
 
+function verifyKey(key) {
+  let flag = GLOBAL_USER_POOL[key] ? true : false; 
+  return flag;
+}
+
 app.get('**',(req,res,next) => {
   if(!ready) {
     res.send({Error: "Come Back when I am ready... Wait for 1-2 minutes bro."}).status(500);
@@ -62,61 +67,95 @@ app.get('/cities', (req, res) => {
   res.send(dataBase.cities.filter(city => ((city.country_code == req.query.country_code) && (city.province_code == req.query.province_code))));
 });
 
+app.get('/state', (req,res) => {
+  res.send(GLOBAL_USER_POOL);
+});
+
+app.post('/initialize',(req,res) => {
+  let unique = false;
+  while(!unique) {
+    let ran = Math.random();
+    let flag = GLOBAL_USER_POOL.some(t => t.ran == ran );
+    if(!flag) {
+      unique = true;
+      GLOBAL_USER_POOL[ran] = [];
+      return res.send({key: ran}).status(200);
+    }
+  }
+});
+
 app.post('/create_distributor', (req, res) => {
-  let { name, is_child, is_child_of } = req.body;
+  let { name, is_child, is_child_of, key } = req.body;
+  if(!key) {
+    return res.send({ Error: "Key is missing" }).status(400);
+  }
+  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
   if (!(GLOBAL_USER_POOL.some(t => t.name == name))) {
     let id = GLOBAL_USER_POOL.length + 1;
-    GLOBAL_USER_POOL.push({ name, id, permissions: [], banned: [], is_child, is_child_of });
-    res.send(GLOBAL_USER_POOL);
+    GLOBAL_USER_POOL[key].push({ name, id, permissions: [], banned: [], is_child, is_child_of });
+    return res.send(GLOBAL_USER_POOL);
   }
   else {
-    res.send({ Error: "Distributor Name already Taken." }).status(400);
+    return res.send({ Error: "Distributor Name already Taken." }).status(400);
   }
 });
 
 app.post('/add_permission', (req, res) => {
-  let { country_code, province_code, city_code, id } = req.body;
-  for (let i in GLOBAL_USER_POOL) {
+  let { country_code, province_code, city_code, id, key } = req.body;
+  if(!key) {
+    return res.send({ Error: "Key is missing" }).status(400);
+  }
+  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+  for (let i in GLOBAL_USER_POOL[key]) {
     if (GLOBAL_USER_POOL[i].id == id) {
       GLOBAL_USER_POOL[i].permissions.push({ country_code, province_code, city_code });
       break;
     }
   }
-  res.send(GLOBAL_USER_POOL);
+  return res.send(GLOBAL_USER_POOL);
 });
 
 app.post('/block_permission', (req, res) => {
-  let { country_code, province_code, city_code, id } = req.body;
-  for (let i in GLOBAL_USER_POOL) {
+  let { country_code, province_code, city_code, id, key } = req.body;
+  if(!key) {
+    return res.send({ Error: "Key is missing" }).status(400);
+  }
+  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+
+  for (let i in GLOBAL_USER_POOL[key]) {
     if (GLOBAL_USER_POOL[i].id == id) {
       GLOBAL_USER_POOL[i].banned.push({ country_code, province_code, city_code });
       break;
     }
   }
-  res.send(GLOBAL_USER_POOL);
+  return res.send(GLOBAL_USER_POOL);
 });
 
 app.post('check_permissions', (req, res) => {
-  let { country_code, province_code, city_code, id } = req.body;
+  let { country_code, province_code, city_code, id, key } = req.body;
+  if(!key) {
+    return res.send({ Error: "Key is missing" }).status(400);
+  }
+  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+
   let data;
-  for (let i in GLOBAL_USER_POOL) {
-    if (GLOBAL_USER_POOL[i].id == id) {
-      let user = GLOBAL_USER_POOL[i];
+  for (let i in GLOBAL_USER_POOL[key]) {
+    if (GLOBAL_USER_POOL[i][key].id == id) {
+      let user = GLOBAL_USER_POOL[key][i];
       if (user.banned.some(t => (t.country_code == country_code || t.province_code == province_code || t.city_code == city_code))) {
-        res.send({ data: "NO" }).status(200);
+        return res.send({ data: "NO" }).status(200);
       }
       if (!user.is_child) {
-        res.send({ data: "YES" }).status(200);
+        return res.send({ data: "YES" }).status(200);
       }
       else {
         if (user.permissions.every(t => (t.country_code == country_code || t.province_code == province_code || t.city_code == city_code))) {
-          res.send({ data: "YES" }).status(200);
+          return res.send({ data: "YES" }).status(200);
         }
         else {
-          res.send({ data: "NO" }).status(200);
+          return res.send({ data: "NO" }).status(200);
         }
       }
-      break;
     }
   }
 });
