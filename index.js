@@ -8,7 +8,7 @@ const app = express();
 const cors = require('cors');
 var dataBase;
 // App Setup
-app.use(morgan('combined'));
+// app.use(morgan('combined'));
 app.use(cors());
 app.use(bodyParser.json({ type: '*/*' }));
 var fs = require('fs');
@@ -42,13 +42,13 @@ else {
 var GLOBAL_USER_POOL = [];
 
 function verifyKey(key) {
-  let flag = GLOBAL_USER_POOL[key] ? true : false; 
+  let flag = GLOBAL_USER_POOL[key] ? true : false;
   return flag;
 }
 
-app.get('**',(req,res,next) => {
-  if(!ready) {
-    res.send({Error: "Come Back when I am ready... Wait for 1-2 minutes bro."}).status(500);
+app.get('**', (req, res, next) => {
+  if (!ready) {
+    res.send({ Error: "Come Back when I am ready... Wait for 1-2 minutes bro." }).status(500);
   }
   else {
     next();
@@ -67,33 +67,38 @@ app.get('/cities', (req, res) => {
   res.send(dataBase.cities.filter(city => ((city.country_code == req.query.country_code) && (city.province_code == req.query.province_code))));
 });
 
-app.get('/state', (req,res) => {
-  res.send(GLOBAL_USER_POOL);
+app.get('/current_state', (req, res) => {
+  let { key } = req.query;
+  if (!key) {
+    return res.send({ Error: "Key is missing" }).status(400);
+  }
+  if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
+  res.send(GLOBAL_USER_POOL[key]);
 });
 
-app.post('/initialize',(req,res) => {
+app.get('/initialize', (req, res) => {
   let unique = false;
-  while(!unique) {
+  while (!unique) {
     let ran = Math.random();
-    let flag = GLOBAL_USER_POOL.some(t => t.ran == ran );
-    if(!flag) {
+    let flag = GLOBAL_USER_POOL.some(t => t.ran == ran);
+    if (!flag) {
       unique = true;
       GLOBAL_USER_POOL[ran] = [];
-      return res.send({key: ran}).status(200);
+      return res.send({ key: ran, data: GLOBAL_USER_POOL }).status(200);
     }
   }
 });
 
 app.post('/create_distributor', (req, res) => {
   let { name, is_child, is_child_of, key } = req.body;
-  if(!key) {
+  if (!key) {
     return res.send({ Error: "Key is missing" }).status(400);
   }
-  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+  if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
   if (!(GLOBAL_USER_POOL.some(t => t.name == name))) {
-    let id = GLOBAL_USER_POOL.length + 1;
+    let id = GLOBAL_USER_POOL[key].length + 1;
     GLOBAL_USER_POOL[key].push({ name, id, permissions: [], banned: [], is_child, is_child_of });
-    return res.send(GLOBAL_USER_POOL);
+    return res.send({data: GLOBAL_USER_POOL[key], id}).status(200);
   }
   else {
     return res.send({ Error: "Distributor Name already Taken." }).status(400);
@@ -101,14 +106,14 @@ app.post('/create_distributor', (req, res) => {
 });
 
 app.post('/add_permission', (req, res) => {
-  let { country_code, province_code, city_code, id, key } = req.body;
-  if(!key) {
+  let { country_code, province_code, city_code, id, key, country_name, province_name, city_name } = req.body;
+  if (!key) {
     return res.send({ Error: "Key is missing" }).status(400);
   }
-  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+  if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
   for (let i in GLOBAL_USER_POOL[key]) {
     if (GLOBAL_USER_POOL[i].id == id) {
-      GLOBAL_USER_POOL[i].permissions.push({ country_code, province_code, city_code });
+      GLOBAL_USER_POOL[i].permissions.push({ country_code, province_code, city_code, country_name, province_name, city_name });
       break;
     }
   }
@@ -117,10 +122,10 @@ app.post('/add_permission', (req, res) => {
 
 app.post('/block_permission', (req, res) => {
   let { country_code, province_code, city_code, id, key } = req.body;
-  if(!key) {
+  if (!key) {
     return res.send({ Error: "Key is missing" }).status(400);
   }
-  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+  if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
 
   for (let i in GLOBAL_USER_POOL[key]) {
     if (GLOBAL_USER_POOL[i].id == id) {
@@ -133,10 +138,10 @@ app.post('/block_permission', (req, res) => {
 
 app.post('check_permissions', (req, res) => {
   let { country_code, province_code, city_code, id, key } = req.body;
-  if(!key) {
+  if (!key) {
     return res.send({ Error: "Key is missing" }).status(400);
   }
-  if(!verifyKey(key))  return res.send({ Error: "Invalid Key" }).status(400);
+  if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
 
   let data;
   for (let i in GLOBAL_USER_POOL[key]) {
@@ -160,9 +165,9 @@ app.post('check_permissions', (req, res) => {
   }
 });
 
-app.post('reset_key',(req,res) => {
+app.post('reset_key', (req, res) => {
   let { key } = req.body;
   delete GLOBAL_USER_POOL[key];
-  return res.send({data: true}).status(200);
+  return res.send({ data: true }).status(200);
 });
 
