@@ -95,7 +95,7 @@ app.post('/create_distributor', (req, res) => {
     return res.send({ Error: "Key is missing" }).status(400);
   }
   if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
-  if (!(GLOBAL_USER_POOL.some(t => t.name == name))) {
+  if (!(GLOBAL_USER_POOL[key].some(t => t.name == name))) {
     let id = GLOBAL_USER_POOL[key].length + 1;
     GLOBAL_USER_POOL[key].push({ name, id, permissions: [], banned: [], is_child, is_child_of });
     return res.send({data: GLOBAL_USER_POOL[key], id}).status(200);
@@ -112,12 +112,12 @@ app.post('/add_permission', (req, res) => {
   }
   if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
   for (let i in GLOBAL_USER_POOL[key]) {
-    if (GLOBAL_USER_POOL[i].id == id) {
-      GLOBAL_USER_POOL[i].permissions.push({ country_code, province_code, city_code, country_name, province_name, city_name });
+    if (GLOBAL_USER_POOL[key][i].id == id) {
+      GLOBAL_USER_POOL[key][i].permissions.push({ country_code, province_code, city_code, country_name, province_name, city_name });
       break;
     }
   }
-  return res.send(GLOBAL_USER_POOL);
+  return res.send(GLOBAL_USER_POOL[key]);
 });
 
 app.post('/block_permission', (req, res) => {
@@ -128,12 +128,12 @@ app.post('/block_permission', (req, res) => {
   if (!verifyKey(key)) return res.send({ Error: "Invalid Key" }).status(400);
 
   for (let i in GLOBAL_USER_POOL[key]) {
-    if (GLOBAL_USER_POOL[i].id == id) {
-      GLOBAL_USER_POOL[i].banned.push({ country_code, province_code, city_code });
+    if (GLOBAL_USER_POOL[key][i].id == id) {
+      GLOBAL_USER_POOL[key][i].banned.push({ country_code, province_code, city_code });
       break;
     }
   }
-  return res.send(GLOBAL_USER_POOL);
+  return res.send(GLOBAL_USER_POOL[key]);
 });
 
 app.post('check_permissions', (req, res) => {
@@ -145,7 +145,7 @@ app.post('check_permissions', (req, res) => {
 
   let data;
   for (let i in GLOBAL_USER_POOL[key]) {
-    if (GLOBAL_USER_POOL[i][key].id == id) {
+    if (GLOBAL_USER_POOL[key][i].id == id) {
       let user = GLOBAL_USER_POOL[key][i];
       if (user.banned.some(t => (t.country_code == country_code || t.province_code == province_code || t.city_code == city_code))) {
         return res.send({ data: "NO" }).status(200);
